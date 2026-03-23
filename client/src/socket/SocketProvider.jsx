@@ -3,7 +3,20 @@ import { io } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
 import { useAuth } from "../context/AuthContext";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+const getSocketURL = () => {
+  const socketUrl = import.meta.env.VITE_SOCKET_URL;
+  if (socketUrl) return socketUrl;
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    // If API URL is provided, strip /api for socket connection
+    return apiUrl.replace(/\/api$/, "");
+  }
+
+  return "http://localhost:5000";
+};
+
+const SOCKET_URL = getSocketURL();
 
 function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
