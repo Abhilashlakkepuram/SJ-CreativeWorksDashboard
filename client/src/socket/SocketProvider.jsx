@@ -3,44 +3,41 @@ import { io } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
 import { useAuth } from "../context/AuthContext";
 
-const getSocketURL = () => {
-  const socketUrl = import.meta.env.VITE_SOCKET_URL;
-  if (socketUrl) return socketUrl;
-
-  const apiUrl = import.meta.env.VITE_API_URL;
-  if (apiUrl) {
-    // If API URL is provided, strip /api for socket connection
-    return apiUrl.replace(/\/api$/, "");
-  }
-
-  return "http://localhost:5000";
-};
-
-const SOCKET_URL = getSocketURL();
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
+
     const newSocket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
+      withCredentials: true,
       auth: {
-        token: localStorage.getItem("token")
-      }
+        token: localStorage.getItem("token"),
+      },
+    });
+
+    newSocket.on("connect", () => {
+      console.log("✅ Socket connected:", newSocket.id);
+
+      // Join user room
+      newSocket.emit("join", user.id);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
     });
 
     setSocket(newSocket);
 
-    // Join user-specific room when authenticated
-    if (user?.id) {
-      newSocket.emit("join", user.id);
-    }
-
     return () => {
-      newSocket.close();
+      newSocket.disconnect();
     };
-  }, [user?.id]); // Re-run when user ID changes (e.g. login/logout)
+  }, [user?.id]);
 
   return (
     <SocketContext.Provider value={socket}>
