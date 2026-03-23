@@ -14,7 +14,7 @@ function SocketProvider({ children }) {
     if (!user) return;
 
     const newSocket = io(SOCKET_URL, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"], // ✅ IMPORTANT
       withCredentials: true,
       auth: {
         token: localStorage.getItem("token"),
@@ -23,8 +23,6 @@ function SocketProvider({ children }) {
 
     newSocket.on("connect", () => {
       console.log("✅ Socket connected:", newSocket.id);
-
-      // Join user room
       newSocket.emit("join", user.id);
     });
 
