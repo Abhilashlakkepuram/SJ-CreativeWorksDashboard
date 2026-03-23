@@ -114,6 +114,7 @@ const corsOptions = {
 
 // ✅ USE THIS ONLY (REMOVE YOUR OLD HEADERS CODE)
 app.use(cors(corsOptions));
+app.options("/", cors(corsOptions));
 
 // ✅ PREFLIGHT FIX
 // In Express 5 (path-to-regexp v8), unnamed wildcards like "*" throw an error.
