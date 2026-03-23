@@ -105,16 +105,10 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow Postman, mobile apps
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.log("❌ Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: [
+    "http://localhost:5173",
+    "https://sj-creative-works-dashboard.vercel.app"
+  ],
   credentials: true
 };
 
@@ -153,7 +147,12 @@ io.on("connection", (socket) => {
 
 // ✅ MIDDLEWARE
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+app.use((err, req, res, next) => {
+  console.error("🔥 ERROR:", err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
+});
 // ✅ DB
 connectDB();
 
