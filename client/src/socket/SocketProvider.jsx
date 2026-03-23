@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
 import { useAuth } from "../context/AuthContext";
 
-const SOCKET_URL = "http://localhost:5000";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);

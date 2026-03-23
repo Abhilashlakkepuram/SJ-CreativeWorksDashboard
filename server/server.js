@@ -19,7 +19,14 @@ const server = http.createServer(app);
 
 // CORS configuration shared by Express and Socket.IO
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "https://sj-creative-works-dashboard.vercel.app"
+  ],
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
 };
@@ -54,10 +61,7 @@ console.log("Starting SJ Creative Works Server...");
 connectDB();
 
 // 5. Middleware
-app.use(cors({
-  origin: "https://sj-creative-works-dashboard.vercel.app",
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // 6. Routes
