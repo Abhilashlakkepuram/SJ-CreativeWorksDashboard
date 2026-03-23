@@ -54,7 +54,10 @@ console.log("Starting SJ Creative Works Server...");
 connectDB();
 
 // 5. Middleware
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: "https://sj-creative-works-dashboard.vercel.app",
+  credentials: true
+}));
 app.use(express.json());
 
 // 6. Routes
