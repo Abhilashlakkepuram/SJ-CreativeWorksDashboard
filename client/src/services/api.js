@@ -31,7 +31,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://sjcreativeworksdashboard.onrender.com/api",
+  baseURL: "https://sj-creative-works-dashboard.vercel.app/api",
   withCredentials: true
 });
 

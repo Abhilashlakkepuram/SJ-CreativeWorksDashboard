@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
 import { useAuth } from "../context/AuthContext";
 
-const SOCKET_URL = "https://sjcreativeworksdashboard.onrender.com";
+const SOCKET_URL = "https://sj-creative-works-dashboard.onrender.com";
 
 function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
