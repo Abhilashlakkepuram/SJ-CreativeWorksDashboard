@@ -30,8 +30,16 @@
 
 import axios from "axios";
 
+const getBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
+  }
+  return "http://localhost:5000/api";
+};
+
 const api = axios.create({
-  baseURL: "https://sj-creative-works-dashboard.vercel.app/api",
+  baseURL: getBaseURL(),
   withCredentials: true
 });
 

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { getLocation } from "../utils/getLocation";
 
 // These should ideally come from an API or env, but let's match the server's default
-const OFFICE_LAT = 18.4491014;
-const OFFICE_LNG = 79.1126611;
+const OFFICE_LAT = 17.498200406402017
+const OFFICE_LNG = 78.40693989234757;
 const MAX_DISTANCE = 200; // meters
 
 const getDistance = (lat1, lon1, lat2, lon2) => {

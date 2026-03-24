@@ -8,6 +8,7 @@ const navItems = [
   { name: "Attendance Monitor", path: "/admin/attendance" },
   { name: "Leave Requests", path: "/admin/leaves" },
   { name: "Reports", path: "/admin/reports" },
+  { name: "Chat", path: "/admin/chat" },
   { name: "Notifications", path: "/admin/notifications" },
 ];
 

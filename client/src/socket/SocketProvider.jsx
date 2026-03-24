@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { SocketContext } from "./SocketContext";
 import { useAuth } from "../context/AuthContext";
 
-const SOCKET_URL = "https://sj-creative-works-dashboard.onrender.com";
+const SOCKET_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : "http://localhost:5000";
 
 function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
@@ -22,7 +22,7 @@ function SocketProvider({ children }) {
 
     newSocket.on("connect", () => {
       console.log("✅ Socket connected:", newSocket.id);
-      newSocket.emit("join", user.id);
+      newSocket.emit("join", { userId: user.id, role: user.role });
     });
 
     newSocket.on("disconnect", () => {

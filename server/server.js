@@ -93,6 +93,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -154,9 +155,59 @@ app.set("io", io);
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
-  socket.on("join", (userId) => {
+  socket.on("join", (userData) => {
+    // Support both old clients (string userId) and new clients ({ userId, role })
+    const userId = typeof userData === "string" ? userData : userData?.userId;
+    const role = userData?.role;
+
     if (userId) {
       socket.join(`user_${userId}`);
+    }
+    if (role) {
+      socket.join(`role_${role}`);
+    }
+  });
+
+  socket.on("send-message", async (data) => {
+    const { senderId, receiverId, roleReceiver, message, isGroupMessage } = data;
+    const Message = require("./models/Message");
+
+    const newMessage = await Message.create({
+      sender: senderId,
+      receiver: isGroupMessage ? undefined : receiverId,
+      roleReceiver: isGroupMessage ? roleReceiver : undefined,
+      isGroupMessage: !!isGroupMessage,
+      message
+    });
+
+    if (isGroupMessage && roleReceiver) {
+      // ✅ Emit to everyone in the role room, including sender
+      io.to(`role_${roleReceiver}`).emit("new-message", newMessage);
+    } else if (receiverId) {
+      // ✅ Emit to individual receiver
+      io.to(`user_${receiverId}`).emit("new-message", newMessage);
+      // ✅ Emit to sender (for UI update)
+      io.to(`user_${senderId}`).emit("new-message", newMessage);
+
+      // 🔔 CREATE GLOBAL NOTIFICATION FOR RECEIVER
+      try {
+        const User = require("./models/User");
+        const Notification = require("./models/Notification");
+
+        const sender = await User.findById(senderId).select("name");
+        const senderName = sender ? sender.name : "A colleague";
+
+        const newNotification = await Notification.create({
+          user: receiverId,
+          type: "chat",
+          message: `New chat message from ${senderName}`
+        });
+
+        // Trigger the red bubble on the receiver's bell icon
+        io.to(`user_${receiverId}`).emit("new-notification", newNotification);
+      } catch (err) {
+        console.error("Failed to create chat notification:", err);
+      }
     }
   });
 
@@ -181,8 +232,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/notifications", notificationRoutes);
-
-
+app.use("/api/chat", chatRoutes);
 // ✅ TEST ROUTE
 app.get("/test", (req, res) => {
   res.send("API Running 🚀");

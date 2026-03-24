@@ -43,7 +43,7 @@ const registerUser = async (req, res) => {
       role,
       isApproved: false
     });
-    console.log("running");
+
     await user.save();
 
     // 🔥 Get socket instance
@@ -71,10 +71,12 @@ const loginUser = async (req, res) => {
   try {
 
     const { email, password } = req.body;
+    console.log(`== LOGIN ATTEMPT == Email: ${email}`);
 
     const user = await User.findOne({ email });
 
     if (!user) {
+      console.log("❌ Login failed: User not found");
       return res.status(400).json({
         message: "User not found"
       });
@@ -83,6 +85,7 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
+      console.log("❌ Login failed: Invalid password");
       return res.status(400).json({
         message: "Invalid password"
       });

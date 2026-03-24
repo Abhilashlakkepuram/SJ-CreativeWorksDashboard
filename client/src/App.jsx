@@ -78,6 +78,7 @@ function AppRoutes() {
         <Route path="attendance" element={<AttendanceMonitor />} />
         <Route path="holidays" element={<AdminHolidays />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="chat" element={<Chat />} />
         <Route path="notifications" element={<Notifications />} />
       </Route>
 
