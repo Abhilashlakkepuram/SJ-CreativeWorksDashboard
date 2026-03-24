@@ -43,7 +43,7 @@ const registerUser = async (req, res) => {
       role,
       isApproved: false
     });
-
+    console.log("running");
     await user.save();
 
     // 🔥 Get socket instance

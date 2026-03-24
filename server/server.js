@@ -93,10 +93,13 @@ const adminRoutes = require("./routes/adminRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+
 const app = express();
 const server = http.createServer(app);
 
-// ✅ FINAL CORS FIX (DYNAMIC ORIGIN)
+
+// ✅ FINAL CORS (SUPPORTS VERCEL PREVIEW + LOCAL + PROD)
+// ✅ FINAL CORS (SUPPORTS VERCEL PREVIEW + LOCAL + PROD)
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -105,26 +108,40 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://sj-creative-works-dashboard.vercel.app"
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.includes(".vercel.app")) {
+      return callback(null, true);
+    }
+    console.log("❌ CORS BLOCKED:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Explicitly allow methods
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"] // Explicitly allow headers
 };
 
-// ✅ USE THIS ONLY (REMOVE YOUR OLD HEADERS CODE)
 app.use(cors(corsOptions));
-app.options("/", cors(corsOptions));
 
-// ✅ PREFLIGHT FIX
-// In Express 5 (path-to-regexp v8), unnamed wildcards like "*" throw an error.
-// app.use(cors()) already handles preflight requests globally, so this line is redundant and can be removed:
-// app.options("*", cors(corsOptions));
+// ✅ Use a Native JS RegExp. This bypasses the string parser entirely!
+app.options(/.*/, cors(corsOptions));
 
-// ✅ SOCKET FIX
+
+// ✅ SOCKET.IO (MATCH SAME LOGIC)
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.includes(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Socket CORS blocked"), false);
+    },
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -132,6 +149,8 @@ const io = new Server(server, {
 
 app.set("io", io);
 
+
+// ✅ SOCKET CONNECTION
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
@@ -146,16 +165,15 @@ io.on("connection", (socket) => {
   });
 });
 
+
 // ✅ MIDDLEWARE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use((err, req, res, next) => {
-  console.error("🔥 ERROR:", err.stack);
-  res.status(500).json({ message: "Internal Server Error" });
-});
+
 // ✅ DB
 connectDB();
+
 
 // ✅ ROUTES
 app.use("/api/auth", authRoutes);
@@ -164,11 +182,21 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// ✅ TEST
-app.get("/", (req, res) => {
+
+// ✅ TEST ROUTE
+app.get("/test", (req, res) => {
   res.send("API Running 🚀");
 });
 
+
+// ✅ ERROR HANDLER
+app.use((err, req, res, next) => {
+  console.error("🔥 ERROR:", err.message);
+  res.status(500).json({ message: err.message || "Server Error" });
+});
+
+
+// ✅ START SERVER
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
