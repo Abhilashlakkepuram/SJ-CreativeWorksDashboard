@@ -14,6 +14,7 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleUnreads, setRoleUnreads] = useState({});
   const messagesEndRef = useRef(null);
 
   // Available roles for channels
@@ -63,7 +64,11 @@ function Chat() {
 
       setChatList(initialChats);
     });
+
+    // Fetch initial role unread counts
+    api.get("/chat/unread-roles").then(res => setRoleUnreads(res.data));
   }, []);
+
 
   // Listen for real-time messages
   useEffect(() => {
@@ -93,13 +98,12 @@ function Chat() {
         }
 
         // 🔔 REAL CHAT NOTIFICATION FOR GROUP MESSAGES (if not actively viewing it)
-        if (isGroup && msg.sender !== user.id && (!selectedRole || msg.roleReceiver !== selectedRole)) {
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification(`New message in #${msg.roleReceiver}`, {
-              body: msg.message,
-              icon: "/favicon.ico" // Optional: fallback icon
-            });
-          }
+        // 🔔 ROLE UNREAD COUNT (Handled locally)
+        if (isGroup && senderId !== user.id && (!selectedRole || msg.roleReceiver !== selectedRole)) {
+          setRoleUnreads(prev => ({
+            ...prev,
+            [msg.roleReceiver]: (prev[msg.roleReceiver] || 0) + 1
+          }));
         }
 
         return prev;
@@ -122,15 +126,17 @@ function Chat() {
             unread: isChatOpen ? 0 : (existing?.unread || 0) + 1
           };
 
-          // 🔔 REAL CHAT NOTIFICATION FOR DIRECT MESSAGES
-          if (!isChatOpen && msg.sender !== user.id) {
+          // 🔔 REAL CHAT NOTIFICATION FOR DIRECT MESSAGES (Handled globally by NotificationBell)
+          /*
+          if (!isChatOpen && senderId !== user.id) {
             if ("Notification" in window && Notification.permission === "granted") {
               new Notification(`New message from ${updatedChat.user?.name || "Colleague"}`, {
                 body: msg.message,
                 icon: "/favicon.ico"
               });
             }
-          } else if (isChatOpen && msg.sender !== user.id) {
+          } else */
+          if (isChatOpen && senderId !== user.id) {
             // Auto mark read if already looking at it
             api.patch(`/chat/read/${otherUserId}`).catch(console.error);
           }
@@ -186,6 +192,15 @@ function Chat() {
   const handleSelectRole = (r) => {
     setSelectedRole(r);
     setSelectedUser(null);
+
+    // 🔥 reset unread locally
+    setRoleUnreads(prev => ({
+      ...prev,
+      [r]: 0
+    }));
+
+    // mark read in db
+    api.patch(`/chat/read-role/${r}`).catch(err => console.error("Failed to mark role as read", err));
   };
 
   const filteredUsers = users.filter((u) =>
@@ -238,7 +253,12 @@ function Chat() {
                       }`}
                   >
                     <span className="text-lg font-bold text-primary-400">#</span>
-                    <span className="capitalize">{role}</span>
+                    <span className="capitalize flex-1">{role}</span>
+                    {roleUnreads[role] > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                        {roleUnreads[role]}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -264,8 +284,8 @@ function Chat() {
                       key={u._id}
                       onClick={() => handleSelectUser(u)}
                       className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4 ${selectedUser?._id === u._id
-                          ? "bg-primary-50 border-primary-600"
-                          : "border-transparent hover:bg-slate-50"
+                        ? "bg-primary-50 border-primary-600"
+                        : "border-transparent hover:bg-slate-50"
                         }`}
                     >
                       {/* Avatar */}
@@ -367,7 +387,8 @@ function Chat() {
                 </div>
               ) : (
                 messages.map((m, i) => {
-                  const isMe = m.sender === user.id;
+                  const mSenderId = m.sender?._id || m.sender;
+                  const isMe = mSenderId === user.id;
                   return (
                     <div key={i} className={`flex ${isMe ? "justify-end" : "justify-start"} animate-fade-in-up`}>
                       <div className={`max-w-[75%] px-4 py-2.5 shadow-sm text-sm ${isMe

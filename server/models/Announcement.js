@@ -6,8 +6,8 @@ const announcementSchema = new mongoose.Schema({
 
   priority: {
     type: String,
-    enum: ["normal", "urgent", "emergency"],
-    default: "normal"
+    enum: ["low", "medium", "high"],
+    default: "medium"
   },
 
   targetRole: {

@@ -16,6 +16,9 @@ function Employees() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEmp, setNewEmp] = useState({ name: "", email: "", password: "", role: "developer" });
   const [actionLoading, setActionLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [serverStats, setServerStats] = useState({ total: 0, active: 0, blocked: 0, pending: 0 });
   const [deleteModalConfig, setDeleteModalConfig] = useState({
     isOpen: false,
     employeeId: null,
@@ -28,9 +31,13 @@ function Employees() {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (role !== "all") params.append("role", role);
+      params.append("page", page);
+      params.append("limit", 15);
 
       const res = await api.get(`/admin/employees?${params}`);
-      setEmployees(res.data.data || res.data);
+      setEmployees(res.data.data || []);
+      setTotalPages(res.data.totalPages || 1);
+      if (res.data.stats) setServerStats(res.data.stats);
     } catch (err) {
       console.error(err);
     } finally {
@@ -46,7 +53,7 @@ function Employees() {
       socket.on("dashboard-update", fetchEmployees);
       return () => socket.off("dashboard-update", fetchEmployees);
     }
-  }, [search, role, socket]);
+  }, [search, role, page, socket]);
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
@@ -94,10 +101,10 @@ function Employees() {
   };
 
   const stats = {
-    total: employees.length,
-    active: employees.filter(e => !e.isBlocked).length,
-    blocked: employees.filter(e => e.isBlocked).length,
-    pending: employees.filter(e => !e.isApproved).length
+    total: serverStats.total,
+    active: serverStats.active,
+    blocked: serverStats.blocked,
+    pending: serverStats.pending
   };
 
   return (
@@ -317,6 +324,31 @@ function Employees() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
+            <p className="text-xs text-slate-500 font-medium">
+              Showing page <span className="font-bold text-slate-900">{page}</span> of <span className="font-bold text-slate-900">{totalPages}</span>
+            </p>
+            <div className="flex gap-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(p => p - 1)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
+              >
+                Previous
+              </button>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(p => p + 1)}
+                className="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50 transition-all shadow-lg shadow-primary-100"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Employee Modal */}

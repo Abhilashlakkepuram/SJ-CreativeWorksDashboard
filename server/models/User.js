@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema({
   resetAttempts: {
     type: Number,
     default: 0
+  },
+  roleReadTimestamps: {
+    type: Map,
+    of: Date,
+    default: {}
   }
 });
 

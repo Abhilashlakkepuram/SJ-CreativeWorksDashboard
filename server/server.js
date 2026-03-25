@@ -99,8 +99,40 @@ io.on("connection", (socket) => {
     });
 
     if (isGroupMessage && roleReceiver) {
-      // ✅ Emit to everyone in the role room, including sender
+      // ✅ Emit to everyone in the role room
       io.to(`role_${roleReceiver}`).emit("new-message", newMessage);
+      // ✅ Emit to sender specifically
+      io.to(`user_${senderId}`).emit("new-message", newMessage);
+
+      // 🔔 CREATE GLOBAL NOTIFICATIONS FOR ALL IN ROLE
+      try {
+        const User = require("./models/User");
+        const Notification = require("./models/Notification");
+
+        const sender = await User.findById(senderId).select("name");
+        const senderName = sender ? sender.name : "A colleague";
+
+        // Find all users in this role (except sender)
+        const targetUsers = await User.find({ role: roleReceiver, _id: { $ne: senderId } }).select("_id");
+
+        if (targetUsers.length > 0) {
+          const notifications = targetUsers.map(u => ({
+            user: u._id,
+            type: "chat",
+            message: `New chat message in #${roleReceiver} from ${senderName}`
+          }));
+
+          // Bulk create notifications for efficiency
+          const savedNotifs = await Notification.insertMany(notifications);
+
+          // Emit to each user's private room
+          savedNotifs.forEach(notif => {
+            io.to(`user_${notif.user}`).emit("new-notification", notif);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to create role chat notifications:", err);
+      }
     } else if (receiverId) {
       // ✅ Emit to individual receiver
       io.to(`user_${receiverId}`).emit("new-message", newMessage);
@@ -152,6 +184,7 @@ app.use("/api/leaves", leaveRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/announcements", require("./routes/announcementRoutes"));
+app.use("/api/holidays", require("./routes/holidayRoutes"));
 // ✅ TEST ROUTE
 app.get("/test", (req, res) => {
   res.send("API Running 🚀");

@@ -21,6 +21,7 @@ import AdminHolidays from "./pages/admin/Holidays";
 import Reports from "./pages/admin/Reports";
 import EmployeeProfile from "./pages/admin/EmployeeProfile";
 import EmployeeAttendance from "./pages/admin/EmployeeAttendance";
+import PostAnnouncement from "./pages/admin/PostAnnouncement";
 
 // Employee pages
 import EmployeeDashboard from "./pages/employee/Dashboard";
@@ -80,6 +81,7 @@ function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="chat" element={<Chat />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="announcements" element={<PostAnnouncement />} />
       </Route>
 
       {/* Employee */}

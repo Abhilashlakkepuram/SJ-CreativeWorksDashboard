@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { getPagination, formatPagination } = require("../utils/pagination");
 
 // Helper: get start and end of today in LOCAL server time
 const getTodayRangeHelper = () => {
@@ -16,10 +17,8 @@ const getTodayRangeHelper = () => {
 const getEmployees = async (req, res) => {
     console.log("== GET EMPLOYEES CALLED ==");
     try {
-        const { search, role, page = 1, limit = 10 } = req.query;
-        const pageNum = Math.max(1, parseInt(page));
-        const limitNum = Math.max(1, parseInt(limit));
-        const skip = (pageNum - 1) * limitNum;
+        const { search, role, page, limit } = req.query;
+        const { skip, limit: limitNum, page: pageNum } = getPagination(page, limit);
 
         let match = { role: { $ne: "admin" } };
 
@@ -93,11 +92,13 @@ const getEmployees = async (req, res) => {
         ]);
 
         const total = await User.countDocuments(match);
+        const active = await User.countDocuments({ ...match, isBlocked: false, isApproved: true });
+        const blocked = await User.countDocuments({ ...match, isBlocked: true });
+        const pending = await User.countDocuments({ ...match, isApproved: false });
 
         res.json({
-            success: true,
-            data: employees,
-            total
+            ...formatPagination(employees, total, pageNum, limitNum),
+            stats: { total, active, blocked, pending }
         });
 
     } catch (error) {

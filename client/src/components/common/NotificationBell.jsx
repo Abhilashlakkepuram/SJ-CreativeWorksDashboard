@@ -10,6 +10,7 @@ const typeIcons = {
   system: "⚙️",
   chat: "💬",
   registration: "👤",
+  announcement: "📢",
 };
 
 function NotificationBell() {
@@ -44,7 +45,8 @@ function NotificationBell() {
         
         // Show a native browser notification if allowed
         if (Notification.permission === "granted") {
-          new Notification("New SJCW Alert", { body: notif.message });
+          const title = notif.type === "announcement" ? "New Company Announcement" : "New SJCW Alert";
+          new Notification(title, { body: notif.message });
         }
       };
 

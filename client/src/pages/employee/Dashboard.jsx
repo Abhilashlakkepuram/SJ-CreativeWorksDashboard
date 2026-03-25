@@ -17,6 +17,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
 
   const { status: validationStatus, message } = useAttendanceValidation();
 
@@ -28,14 +30,43 @@ function Dashboard() {
       alert(data.message);
     });
 
-    return () => socket.off("leave-approved");
+    socket.on("new-announcement", (ann) => {
+      if (ann.targetRole === "all" || ann.targetRole === user.role) {
+        setAnnouncements(prev => [ann, ...prev].slice(0, 5));
+      }
+    });
+
+    socket.on("announcement-deleted", (id) => {
+      setAnnouncements(prev => prev.filter(a => a._id !== id));
+    });
+
+    return () => {
+      socket.off("leave-approved");
+      socket.off("new-announcement");
+      socket.off("announcement-deleted");
+    };
   }, [socket]);
 
   // 📊 Fetch Data
   useEffect(() => {
     fetchStatus();
     fetchAttendance();
-  }, []);
+    fetchAnnouncements();
+  }, [user?.role]);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setAnnouncementsLoading(true);
+      const res = await api.get("/announcements");
+      // Filter for this user's role or 'all'
+      const filtered = res.data.filter(a => a.targetRole === "all" || a.targetRole === user.role);
+      setAnnouncements(filtered.slice(0, 5)); // Only show top 5 on dashboard
+    } catch (err) {
+      console.error("Failed to fetch announcements:", err);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
 
   const fetchStatus = async () => {
     try {
@@ -262,6 +293,60 @@ function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* 📢 Latest Announcements Section (NEW) */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <span className="p-2 bg-primary-50 text-primary-600 rounded-lg">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </span>
+            Latest Announcements
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {announcementsLoading && announcements.length === 0 ? (
+            <div className="col-span-full py-10 text-center text-slate-400 italic bg-white rounded-3xl border border-dashed border-slate-200">
+              Loading updates...
+            </div>
+          ) : announcements.length === 0 ? (
+            <div className="col-span-full py-10 text-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200">
+              No recent announcements.
+            </div>
+          ) : (
+            announcements.map((ann) => (
+              <div key={ann._id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group relative overflow-hidden">
+                {/* Priority Indicator Line */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${ann.priority === "high" ? "bg-rose-500" :
+                    ann.priority === "medium" ? "bg-amber-500" :
+                      "bg-emerald-500"
+                  }`} />
+
+                <div className="flex justify-between items-start mb-3 pl-2">
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${ann.priority === "high" ? "bg-rose-50 text-rose-600 border-rose-100" :
+                      ann.priority === "medium" ? "bg-amber-50 text-amber-600 border-amber-100" :
+                        "bg-emerald-50 text-emerald-600 border-emerald-100"
+                    }`}>
+                    {ann.priority}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">
+                    {new Date(ann.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+                <h4 className="text-base font-bold text-slate-800 mb-1 group-hover:text-primary-600 transition-colors pl-2">
+                  {ann.title}
+                </h4>
+                <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 pl-2">
+                  {ann.message}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

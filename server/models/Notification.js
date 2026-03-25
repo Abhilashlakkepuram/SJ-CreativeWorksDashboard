@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["attendance", "leave", "system", "chat", "registration"],
+      enum: ["attendance", "leave", "system", "chat", "registration", "announcement"],
       default: "system",
     },
     message: {

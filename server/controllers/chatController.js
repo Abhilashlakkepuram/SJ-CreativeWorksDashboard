@@ -99,6 +99,14 @@ const getRoleMessages = async (req, res) => {
             roleReceiver: role
         }).sort({ createdAt: 1 });
 
+        // 🔥 Auto-mark as read when fetching role messages
+        const user = await User.findById(req.user.id);
+        if (user) {
+            if (!user.roleReadTimestamps) user.roleReadTimestamps = new Map();
+            user.roleReadTimestamps.set(role, new Date());
+            await user.save();
+        }
+
         res.json(messages);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -119,4 +127,55 @@ const markMessagesAsRead = async (req, res) => {
     }
 };
 
-module.exports = { sendMessage, getMessages, getUsersToChat, getRoleMessages, markMessagesAsRead };
+// Get unread counts for all relevant roles
+const getRoleUnreadCounts = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const roles = user.role === "admin"
+            ? ["developer", "seo", "designer", "marketing"]
+            : [user.role];
+
+        const unreadCounts = {};
+
+        await Promise.all(roles.map(async (role) => {
+            const lastRead = user.roleReadTimestamps?.get(role) || new Date(0);
+            const count = await Message.countDocuments({
+                isGroupMessage: true,
+                roleReceiver: role,
+                createdAt: { $gt: lastRead },
+                sender: { $ne: req.user.id } // Don't count own messages
+            });
+            unreadCounts[role] = count;
+        }));
+
+        res.json(unreadCounts);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// Explicitly mark a role as read
+const markRoleAsRead = async (req, res) => {
+    try {
+        const { role } = req.params;
+        const user = await User.findById(req.user.id);
+        if (user) {
+            if (!user.roleReadTimestamps) user.roleReadTimestamps = new Map();
+            user.roleReadTimestamps.set(role, new Date());
+            await user.save();
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {
+    sendMessage,
+    getMessages,
+    getUsersToChat,
+    getRoleMessages,
+    markMessagesAsRead,
+    getRoleUnreadCounts,
+    markRoleAsRead
+};
