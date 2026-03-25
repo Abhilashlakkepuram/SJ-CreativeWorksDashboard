@@ -70,7 +70,7 @@ const punchIn = async (req, res) => {
         let status = "present";
         let isLate = false;
 
-        if (now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() >= 15)) {
+        if (now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() >= 15)) {
             status = "late";
             isLate = true;
         }

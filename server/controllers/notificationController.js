@@ -28,10 +28,10 @@ const notifyAdmins = async (app, type, message) => {
     const adminIds = admins.map(a => a._id);
     if (adminIds.length > 0) {
       const res = await createNotification(app, adminIds, type, message);
-      
+
       const io = app.get("io");
       if (io) {
-          io.emit("dashboard-update"); 
+        io.emit("dashboard-update");
       }
       return res;
     }
@@ -96,12 +96,12 @@ const deleteAllNotifications = async (req, res) => {
   }
 };
 
-module.exports = { 
-  createNotification, 
-  notifyAdmins, 
-  getMyNotifications, 
-  markAsRead, 
-  markAllRead, 
-  deleteNotification, 
-  deleteAllNotifications 
+module.exports = {
+  createNotification,
+  notifyAdmins,
+  getMyNotifications,
+  markAsRead,
+  markAllRead,
+  deleteNotification,
+  deleteAllNotifications
 };

@@ -15,6 +15,26 @@ const requestLeave = async (req, res) => {
       });
     }
 
+    // MNC standard validation: prevent past dates and invalid ranges
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      return res.status(400).json({
+        success: false,
+        message: "Leave start date cannot be in the past",
+      });
+    }
+
+    if (end < start) {
+      return res.status(400).json({
+        success: false,
+        message: "Leave end date cannot be before the start date",
+      });
+    }
+
     const leave = await Leave.create({
       user: req.user.id,
       startDate,

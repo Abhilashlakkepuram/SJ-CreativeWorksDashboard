@@ -7,8 +7,28 @@ function Leaves() {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Get today's date in YYYY-MM-DD format for min attribute
+  const today = new Date().toISOString().split("T")[0];
+
   const submitLeave = async (e) => {
     e.preventDefault();
+
+    // Final validation check before submission (MNC standard)
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (start < now) {
+      alert("Leave start date cannot be in the past.");
+      return;
+    }
+
+    if (end < start) {
+      alert("Leave end date cannot be before the start date.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -44,7 +64,14 @@ function Leaves() {
                 type="date"
                 className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                min={today}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  // If end date is before new start date, reset it
+                  if (endDate && e.target.value > endDate) {
+                    setEndDate("");
+                  }
+                }}
                 required
               />
             </div>
@@ -57,6 +84,7 @@ function Leaves() {
                 type="date"
                 className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 value={endDate}
+                min={startDate || today}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
               />

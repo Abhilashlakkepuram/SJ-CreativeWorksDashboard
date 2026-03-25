@@ -70,10 +70,10 @@ function Attendance() {
                       }
                     </td>
                     <td className="px-6 py-4 text-slate-600 text-right font-mono">
-                      {item.workMinutes !== undefined 
-                        ? `${Math.floor(item.workMinutes / 60)}h ${item.workMinutes % 60}m` 
-                        : item.workHours 
-                          ? `${item.workHours}h` 
+                      {item.workMinutes !== undefined
+                        ? `${Math.floor(item.workMinutes / 60)}h ${item.workMinutes % 60}m`
+                        : item.workHours
+                          ? `${item.workHours}h`
                           : "-"}
                     </td>
                     <td className="px-6 py-4 text-center">
