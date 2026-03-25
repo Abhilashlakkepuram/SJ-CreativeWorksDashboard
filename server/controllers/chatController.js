@@ -4,12 +4,15 @@ const User = require("../models/User");
 // Send Message (API fallback if needed)
 const sendMessage = async (req, res) => {
     try {
-        const { receiverId, message } = req.body;
+        const { receiverId, message, fileUrl, fileType, fileName } = req.body;
 
         const newMessage = await Message.create({
             sender: req.user.id,
             receiver: receiverId,
-            message
+            message,
+            fileUrl,
+            fileType,
+            fileName
         });
 
         res.json(newMessage);
@@ -63,7 +66,7 @@ const getUsersToChat = async (req, res) => {
 
             return {
                 ...u,
-                lastMessage: lastMsg ? lastMsg.message : "",
+                lastMessage: lastMsg ? (lastMsg.message || "📁 Shared a file") : "",
                 time: lastMsg ? lastMsg.createdAt : null,
                 unread: unreadCount 
             };

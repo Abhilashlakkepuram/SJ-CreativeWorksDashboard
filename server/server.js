@@ -12,6 +12,7 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -22,7 +23,10 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:5176",
   "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
   "https://sj-creative-works-dashboard.vercel.app"
 ];
 
@@ -87,7 +91,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send-message", async (data) => {
-    const { senderId, receiverId, roleReceiver, message, isGroupMessage } = data;
+    const { senderId, receiverId, roleReceiver, message, isGroupMessage, fileUrl, fileType, fileName } = data;
     const Message = require("./models/Message");
 
     const newMessage = await Message.create({
@@ -95,7 +99,10 @@ io.on("connection", (socket) => {
       receiver: isGroupMessage ? undefined : receiverId,
       roleReceiver: isGroupMessage ? roleReceiver : undefined,
       isGroupMessage: !!isGroupMessage,
-      message
+      message,
+      fileUrl,
+      fileType,
+      fileName
     });
 
     if (isGroupMessage && roleReceiver) {
@@ -161,6 +168,23 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("mark-seen", async (data) => {
+    const { senderId, receiverId } = data; // receiverId is the one who "saw" the messages (current user)
+    const Message = require("./models/Message");
+
+    try {
+      await Message.updateMany(
+        { sender: senderId, receiver: receiverId, isSeen: false },
+        { $set: { isSeen: true } }
+      );
+      
+      // Notify the original sender that their messages were seen
+      io.to(`user_${senderId}`).emit("messages-seen", { seenBy: receiverId });
+    } catch (err) {
+      console.error("Failed to mark messages as seen:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("❌ Socket disconnected:", socket.id);
   });
@@ -170,6 +194,7 @@ io.on("connection", (socket) => {
 // ✅ MIDDLEWARE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static("uploads"));
 
 
 // ✅ DB
@@ -185,6 +210,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/announcements", require("./routes/announcementRoutes"));
 app.use("/api/holidays", require("./routes/holidayRoutes"));
+app.use("/api/upload", uploadRoutes);
 // ✅ TEST ROUTE
 app.get("/test", (req, res) => {
   res.send("API Running 🚀");

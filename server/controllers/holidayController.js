@@ -15,6 +15,10 @@ const createHoliday = async (req, res) => {
     try {
         const { title, date, type } = req.body;
         const holiday = await Holiday.create({ title, date, type });
+
+        // 🚀 Real-time Update
+        req.app.get("io").emit("holiday-update");
+
         res.json(holiday);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -26,6 +30,10 @@ const deleteHoliday = async (req, res) => {
     try {
         const { id } = req.params;
         await Holiday.findByIdAndDelete(id);
+
+        // 🚀 Real-time Update
+        req.app.get("io").emit("holiday-update");
+
         res.json({ message: "Holiday deleted safely" });
     } catch (err) {
         res.status(500).json({ message: err.message });

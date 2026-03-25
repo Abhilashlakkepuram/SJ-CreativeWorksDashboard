@@ -154,38 +154,78 @@ const forgotPassword = async (req, res) => {
     const logoUrl = "https://sjcreativeworks.com/wp-content/uploads/2024/04/latestup-scaled.png"; // Replace with your actual hosted logo URL
 
     const html = `
-<div style="background-color: #f4f8f9; padding: 40px 10px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-    <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e0e8eb;">
+<div style="background-color: #f4f6f8; padding: 40px 15px; font-family: 'Segoe UI', Arial, sans-serif;">
+
+    <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e5ea; border-radius: 6px;">
         
-        <div style="padding: 35px 20px 20px; text-align: center; border-bottom: 2px solid #f4f8f9;">
-            <img src="${logoUrl}" alt="SJ Creativeworks" style="max-width: 140px; height: auto; display: inline-block;">
+        <!-- Header -->
+        <div style="padding: 20px 30px; border-bottom: 1px solid #e1e5ea;">
+            <img src="${logoUrl}" alt="SJ Creativeworks" style="height: 36px;">
         </div>
 
-        <div style="padding: 40px 30px; text-align: center;">
-            <h2 style="color: #1F8B8D; font-size: 20px; margin-top: 0; margin-bottom: 15px; font-weight: 600;">Password Reset Request</h2>
+        <!-- Content -->
+        <div style="padding: 30px 30px 25px;">
             
-            <p style="font-size: 15px; color: #4f566b; margin-top: 0; line-height: 1.6;">Hello,</p>
-            <p style="font-size: 15px; color: #4f566b; margin-top: 0; line-height: 1.6;">We received a request to reset the password for your <strong>SJ Creativeworks</strong> account. Please use the verification code below to complete the process:</p>
-            
-            <div style="background-color: #fffafa; border: 2px dashed #1F8B8D; border-radius: 8px; padding: 20px; margin: 30px 0;">
-                <h1 style="font-size: 36px; font-weight: 800; color: #1F8B8D; letter-spacing: 8px; margin: 0;">${otp}</h1>
+            <h1 style="font-size: 18px; color: #2d3748; margin: 0 0 20px; font-weight: 600;">
+                Working Day Notification
+            </h1>
+
+            <p style="font-size: 14px; color: #4a5568; line-height: 1.7; margin-bottom: 18px;">
+                Dear Team,
+            </p>
+
+            <p style="font-size: 14px; color: #4a5568; line-height: 1.7; margin-bottom: 18px;">
+                This is to inform all employees that <strong>SJ Creativeworks</strong> will remain operational on the date mentioned below.
+            </p>
+
+            <!-- Info Block -->
+            <div style="border: 1px solid #e6ebf1; border-radius: 6px; padding: 20px; background-color: #fafbfc; margin: 25px 0;">
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="font-size: 13px; color: #718096; padding-bottom: 6px;">Date</td>
+                    </tr>
+                    <tr>
+                        <td style="font-size: 15px; color: #1F8B8D; font-weight: 600;">
+                            27 March 2026
+                        </td>
+                    </tr>
+                </table>
+
             </div>
 
-            <p style="font-size: 14px; color: #8792a2; margin-bottom: 0;">For your security, this code will expire in <span style="font-weight: 600; color: #1F8B8D;">10 minutes</span>.</p>
+            <p style="font-size: 14px; color: #4a5568; line-height: 1.7; margin-bottom: 18px;">
+                Please note that this will be a regular working day, and all employees are expected to adhere to their normal work schedules.
+            </p>
+
+            <p style="font-size: 14px; color: #4a5568; line-height: 1.7; margin-bottom: 25px;">
+                Kindly ensure your availability and plan your tasks accordingly.
+            </p>
+
+            <!-- Signature -->
+            <p style="font-size: 14px; color: #2d3748; margin-bottom: 5px;">
+                Regards,
+            </p>
+            <p style="font-size: 14px; color: #2d3748; margin: 0;">
+                <strong>Management</strong><br>
+                SJ Creativeworks
+            </p>
+
         </div>
 
-        <div style="padding: 20px; background-color: #f8fbfb; text-align: center;">
-            <p style="font-size: 12px; color: #8792a2; margin: 0; line-height: 1.5;">If you didn't request a password reset, you can safely ignore this email. Your account remains secure.</p>
+        <!-- Footer -->
+        <div style="padding: 15px 30px; border-top: 1px solid #e1e5ea; background-color: #fafbfc;">
+            <p style="font-size: 12px; color: #a0aec0; margin: 0;">
+                This is a system-generated communication. For any queries, please contact HR.
+            </p>
         </div>
+
     </div>
-    
-    <div style="max-width: 480px; margin: 20px auto; text-align: center;">
-        <p style="font-size: 11px; color: #adb5bd; text-transform: uppercase; letter-spacing: 1px;">&copy; 2026 SJ Creativeworks • Automated Security Message</p>
-    </div>
+
 </div>
 `;
 
-    await sendEmail(email, "Password Reset OTP", html);
+    await sendEmail(email, "NO HOLIDAY ON 27th March 2026", html);
 
     res.json({
       message: "OTP sent to email"

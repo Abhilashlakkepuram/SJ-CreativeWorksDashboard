@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import api from "../../services/api";
+import { SocketContext } from "../../socket/SocketContext";
 import Badge from "../../components/ui/Badge";
 
 function Holidays() {
+  const socket = useContext(SocketContext);
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +22,12 @@ function Holidays() {
 
   useEffect(() => {
     fetchHolidays();
-  }, []);
+
+    if (socket) {
+      socket.on("holiday-update", fetchHolidays);
+      return () => socket.off("holiday-update", fetchHolidays);
+    }
+  }, [socket]);
 
   const getBadgeStatus = (type) => {
     switch (type) {

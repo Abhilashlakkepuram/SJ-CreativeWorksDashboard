@@ -89,6 +89,10 @@ const punchIn = async (req, res) => {
         const user = await User.findById(userId);
 
         await notifyAdmins(req.app, "attendance", `${user?.name || "Employee"} has punched in (${status})`);
+        
+        // 🚀 Real-time Update
+        req.app.get("io").emit("dashboard-update");
+        req.app.get("io").emit("attendance-update");
 
         res.json({
             message: "Punch in successful",
@@ -179,6 +183,10 @@ const punchOut = async (req, res) => {
         attendance.workMinutes = Math.max(0, minutes);
 
         await attendance.save();
+
+        // 🚀 Real-time Update
+        req.app.get("io").emit("dashboard-update");
+        req.app.get("io").emit("attendance-update");
 
         res.json({
             message: "Punch out successful",

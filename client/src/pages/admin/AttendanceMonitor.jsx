@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import api from "../../services/api";
+import { SocketContext } from "../../socket/SocketContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -14,6 +15,7 @@ const getLocalISOString = (date) => {
 };
 
 function AttendanceMonitor() {
+  const socket = useContext(SocketContext);
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
@@ -50,7 +52,12 @@ function AttendanceMonitor() {
 
   useEffect(() => {
     fetchAttendance();
-  }, [status, search, date]);
+
+    if (socket) {
+      socket.on("attendance-update", fetchAttendance);
+      return () => socket.off("attendance-update", fetchAttendance);
+    }
+  }, [status, search, date, socket]);
 
   const groupAttendanceByDate = (attendanceData) => {
     return attendanceData.reduce((groups, record) => {

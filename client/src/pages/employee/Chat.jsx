@@ -16,6 +16,10 @@ function Chat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleUnreads, setRoleUnreads] = useState({});
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.split('/api')[0] : "http://localhost:5000";
 
   // Available roles for channels
   const availableRoles = user.role === "admin"
@@ -42,32 +46,46 @@ function Chat() {
   useEffect(() => {
     if (selectedUser) {
       api.get(`/chat/${selectedUser._id}`).then(res => setMessages(res.data));
+      // 🔥 Mark as seen when opening chat
+      if (socket) {
+        socket.emit("mark-seen", { senderId: selectedUser._id, receiverId: user.id });
+      }
     } else if (selectedRole) {
       api.get(`/chat/role/${selectedRole}`).then(res => setMessages(res.data));
     } else {
       setMessages([]);
     }
-  }, [selectedUser, selectedRole]);
+  }, [selectedUser, selectedRole, socket, user.id]);
 
   // Load users once
   useEffect(() => {
-    api.get("/chat/users").then(res => {
-      setUsers(res.data);
+    const fetchUsers = () => {
+      api.get("/chat/users").then(res => {
+        setUsers(res.data);
 
-      // initialize chat list directly from enriched backend payload
-      const initialChats = res.data.map(u => ({
-        user: { _id: u._id, name: u.name, role: u.role },
-        lastMessage: u.lastMessage || "",
-        time: u.time || null,
-        unread: u.unread || 0
-      }));
+        // initialize chat list directly from enriched backend payload
+        const initialChats = res.data.map(u => ({
+          user: { _id: u._id, name: u.name, role: u.role },
+          lastMessage: u.lastMessage || "",
+          time: u.time || null,
+          unread: u.unread || 0
+        }));
 
-      setChatList(initialChats);
-    });
+        setChatList(initialChats);
+      });
+    };
+
+    fetchUsers();
+
+    // Listen for dashboard updates (new user registered/approved/deleted)
+    if (socket) {
+      socket.on("dashboard-update", fetchUsers);
+      return () => socket.off("dashboard-update", fetchUsers);
+    }
 
     // Fetch initial role unread counts
     api.get("/chat/unread-roles").then(res => setRoleUnreads(res.data));
-  }, []);
+  }, [socket]);
 
 
   // Listen for real-time messages
@@ -89,6 +107,10 @@ function Chat() {
             senderId === selectedUser._id ||
             receiverId === selectedUser._id
           ) {
+            // 🔥 If we are currently looking at THIS chat, mark this new message as seen immediately
+            if (senderId === selectedUser._id) {
+              socket.emit("mark-seen", { senderId: selectedUser._id, receiverId: user.id });
+            }
             return [...prev, msg];
           }
         }
@@ -126,16 +148,6 @@ function Chat() {
             unread: isChatOpen ? 0 : (existing?.unread || 0) + 1
           };
 
-          // 🔔 REAL CHAT NOTIFICATION FOR DIRECT MESSAGES (Handled globally by NotificationBell)
-          /*
-          if (!isChatOpen && senderId !== user.id) {
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification(`New message from ${updatedChat.user?.name || "Colleague"}`, {
-                body: msg.message,
-                icon: "/favicon.ico"
-              });
-            }
-          } else */
           if (isChatOpen && senderId !== user.id) {
             // Auto mark read if already looking at it
             api.patch(`/chat/read/${otherUserId}`).catch(console.error);
@@ -148,32 +160,72 @@ function Chat() {
       }
     };
 
-    socket.on("new-message", handleNewMessage);
-    return () => socket.off("new-message", handleNewMessage);
-  }, [socket, selectedUser, selectedRole, user.id]);
+    // Listen for messages-seen updates
+    const handleMessagesSeen = (data) => {
+      const { seenBy } = data;
+      if (selectedUser && seenBy === selectedUser._id) {
+        setMessages(prev => prev.map(m => {
+          const mReceiverId = m.receiver?._id || m.receiver;
+          if (mReceiverId === seenBy) {
+            return { ...m, isSeen: true };
+          }
+          return m;
+        }));
+      }
+    };
 
-  const sendMessage = () => {
-    if (!text.trim()) return;
+    socket.on("new-message", handleNewMessage);
+    socket.on("messages-seen", handleMessagesSeen);
+    return () => {
+      socket.off("new-message", handleNewMessage);
+      socket.off("messages-seen", handleMessagesSeen);
+    };
+  }, [socket, selectedUser, selectedRole, user.id, users]);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setIsUploading(true);
+      const res = await api.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      
+      // Auto-send message with file
+      sendMessage(null, res.data);
+    } catch (err) {
+      alert(err.response?.data?.message || "File upload failed");
+    } finally {
+      setIsUploading(false);
+      e.target.value = null; // Reset input
+    }
+  };
+
+  const sendMessage = (e, fileData = null) => {
+    if (e) e.preventDefault();
+    if (!text.trim() && !fileData) return;
     if (!selectedUser && !selectedRole) return;
 
-    if (selectedRole) {
-      socket.emit("send-message", {
-        senderId: user.id,
-        roleReceiver: selectedRole,
-        isGroupMessage: true,
-        message: text.trim()
-      });
-    } else if (selectedUser) {
-      socket.emit("send-message", {
-        senderId: user.id,
-        receiverId: selectedUser._id,
-        isGroupMessage: false,
-        message: text.trim()
-      });
-    }
+    const payload = {
+      senderId: user.id,
+      isGroupMessage: !!selectedRole,
+      message: text.trim(),
+      ...(selectedRole ? { roleReceiver: selectedRole } : { receiverId: selectedUser._id }),
+      ...(fileData && {
+        fileUrl: fileData.fileUrl,
+        fileType: fileData.fileType,
+        fileName: fileData.fileName
+      })
+    };
 
+    socket.emit("send-message", payload);
     setText("");
   };
+
   const handleSelectUser = (u) => {
     setSelectedUser(u);
     setSelectedRole(null);
@@ -389,6 +441,8 @@ function Chat() {
                 messages.map((m, i) => {
                   const mSenderId = m.sender?._id || m.sender;
                   const isMe = mSenderId === user.id;
+                  const isImage = m.fileType?.startsWith("image/");
+                  
                   return (
                     <div key={i} className={`flex ${isMe ? "justify-end" : "justify-start"} animate-fade-in-up`}>
                       <div className={`max-w-[75%] px-4 py-2.5 shadow-sm text-sm ${isMe
@@ -398,7 +452,48 @@ function Chat() {
                         {user.role === "admin" && selectedRole && !isMe && (
                           <div className="text-[10px] font-bold text-primary-500 mb-1">Employe Msg</div>
                         )}
-                        {m.message}
+                        
+                        {/* File Display */}
+                        {m.fileUrl && (
+                          <div className="mb-2">
+                            {isImage ? (
+                              <img 
+                                src={`${API_URL}${m.fileUrl}`} 
+                                alt="Shared media" 
+                                className="max-w-full rounded-lg border border-white/20 shadow-sm transition-transform hover:scale-[1.02] cursor-pointer"
+                                onClick={() => window.open(`${API_URL}${m.fileUrl}`, '_blank')}
+                              />
+                            ) : (
+                              <a 
+                                href={`${API_URL}${m.fileUrl}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className={`flex items-center gap-3 p-3 rounded-xl border ${isMe ? 'bg-primary-700/50 border-primary-500 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'} hover:bg-opacity-80 transition-all`}
+                              >
+                                <div className={`w-10 h-10 rounded-lg ${isMe ? 'bg-primary-500' : 'bg-white'} flex items-center justify-center shadow-sm`}>
+                                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold truncate">{m.fileName || "Download Document"}</p>
+                                  <p className="text-[10px] opacity-60 uppercase tracking-tighter">Click to download</p>
+                                </div>
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {m.message && <div className="leading-relaxed">{m.message}</div>}
+
+                        {/* Seen Status Ticks */}
+                        {isMe && !selectedRole && (
+                          <div className={`flex justify-end mt-0.5 -mr-1`}>
+                             <span className={`text-[10px] font-bold ${m.isSeen ? 'text-blue-200' : 'text-slate-300'}`}>
+                               {m.isSeen ? "✓✓" : "✓"}
+                             </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -411,23 +506,49 @@ function Chat() {
             <div className="p-4 bg-white border-t border-slate-100">
               <form
                 onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-                className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:border-primary-400 focus-within:bg-white transition-all shadow-sm"
+                className="flex items-center gap-2"
               >
-                <input
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  className="flex-1 bg-transparent border-none px-4 py-2 text-sm focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none"
-                  placeholder={selectedRole ? `Message #${selectedRole}...` : "Type a message..."}
-                />
+                {/* File Upload Button */}
                 <button
-                  type="submit"
-                  disabled={!text.trim()}
-                  className="w-10 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors shrink-0 shadow-sm"
+                  title="Attach File"
                 >
-                  <svg className="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                  </svg>
+                  {isUploading ? (
+                    <div className="w-5 h-5 border-2 border-slate-300 border-t-primary-600 rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  )}
                 </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                  accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                />
+
+                <div className="flex-1 flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:border-primary-400 focus-within:bg-white transition-all shadow-sm">
+                  <input
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    className="flex-1 bg-transparent border-none px-4 py-2 text-sm focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none"
+                    placeholder={selectedRole ? `Message #${selectedRole}...` : "Type a message..."}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!text.trim() || isUploading}
+                    className="w-10 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                  >
+                    <svg className="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
+                  </button>
+                </div>
               </form>
             </div>
           </div>

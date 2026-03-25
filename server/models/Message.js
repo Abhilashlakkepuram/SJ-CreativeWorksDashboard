@@ -24,10 +24,26 @@ const messageSchema = new mongoose.Schema(
             type: Boolean,
             default: false
         },
+        isSeen: {
+            type: Boolean,
+            default: false
+        },
         message: {
             type: String,
-            required: true,
+            required: false, // 🚀 Now optional if file is present
             trim: true
+        },
+        fileUrl: {
+            type: String,
+            required: false
+        },
+        fileType: {
+            type: String,
+            required: false
+        },
+        fileName: {
+            type: String,
+            required: false
         }
     },
     { timestamps: true }

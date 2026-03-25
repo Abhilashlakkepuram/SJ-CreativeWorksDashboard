@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import api from "../../services/api";
+import { SocketContext } from "../../socket/SocketContext";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Badge from "../../components/ui/Badge";
 import Card, { CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 
 function Holidays() {
+  const socket = useContext(SocketContext);
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -28,7 +30,12 @@ function Holidays() {
 
   useEffect(() => {
     fetchHolidays();
-  }, []);
+
+    if (socket) {
+      socket.on("holiday-update", fetchHolidays);
+      return () => socket.off("holiday-update", fetchHolidays);
+    }
+  }, [socket]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import api from "../../services/api";
+import { SocketContext } from "../../socket/SocketContext";
 
 function LeaveRequests() {
+  const socket = useContext(SocketContext);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +55,14 @@ function LeaveRequests() {
     }
   };
 
-  useEffect(() => { fetchLeaves(); }, []);
+  useEffect(() => {
+    fetchLeaves();
+
+    if (socket) {
+      socket.on("leave-update", fetchLeaves);
+      return () => socket.off("leave-update", fetchLeaves);
+    }
+  }, [socket]);
 
   return (
     <div className="flex flex-col gap-8">

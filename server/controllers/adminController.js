@@ -139,6 +139,10 @@ const updateEmployee = async (req, res) => {
     try {
         const { name, email, role } = req.body;
         await User.findByIdAndUpdate(req.params.id, { name, email, role });
+        
+        // 🚀 Real-time Update
+        req.app.get("io").emit("dashboard-update");
+
         res.json({ message: "Employee updated successfully" });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
@@ -149,6 +153,10 @@ const updateEmployee = async (req, res) => {
 const deleteEmployee = async (req, res) => {
     try {
         await User.findByIdAndDelete(req.params.id);
+
+        // 🚀 Real-time Update
+        req.app.get("io").emit("dashboard-update");
+
         res.json({ message: "Employee deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
@@ -162,6 +170,10 @@ const toggleBlockUser = async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
         user.isBlocked = !user.isBlocked;
         await user.save();
+
+        // 🚀 Real-time Update
+        req.app.get("io").emit("dashboard-update");
+
         res.json({ message: `User ${user.isBlocked ? "blocked" : "unblocked"} successfully` });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
